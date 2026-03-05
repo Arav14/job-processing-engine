@@ -1,7 +1,16 @@
 __pycache__/
 *.pyc
-.env
+*.pyo
+*.pyd
+
+# Virtual environments
 venv/
+.env
 job_engine_env/
-.idea/
+
+# IDE
 .vscode/
+.idea/
+
+# OS
+.DS_Store

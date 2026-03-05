@@ -5,6 +5,7 @@ from typing import Optional, Literal
 
 from sqlalchemy.orm import Session
 
+from app.workers.queue import JobQueue
 from app.db.database import SessionLocal
 from app.db.models import JobDB
 from app.core.enums import JobStatus
@@ -39,6 +40,7 @@ class Worker:  # Background worker that processes jobs concurrently. Supports bo
         self._monitor_thread.start()
         print("Worker started.")
 
+    # Stop worker
     def stop(self):  # Stop the worker thread
         self._running = False
         if self._monitor_thread:
@@ -73,9 +75,13 @@ class Worker:  # Background worker that processes jobs concurrently. Supports bo
             if not job:
                 return "Job not found"
 
+            if job.status == JobStatus.CANCELLED.value:
+                return "Job cancelled"
+
             job.status = JobStatus.RUNNING
             db.commit()
 
+            # Simulate CPU workload
             total = 0
             for i in range(50_000_000):
                 total += i
@@ -95,8 +101,10 @@ class Worker:  # Background worker that processes jobs concurrently. Supports bo
         # Handles job completion safely in parent process
             try:
                 result = future.result()  # get result from future
-                job.result = result
-                job.status = JobStatus.SUCCESS
+
+                if job.status != JobStatus.CANCELLED.value:
+                    job.result = result
+                    job.status = JobStatus.SUCCESS.value
 
             except Exception as e:
                 job.status = JobStatus.FAILED
@@ -107,3 +115,24 @@ class Worker:  # Background worker that processes jobs concurrently. Supports bo
 
         finally:
             db.close()
+
+
+if __name__ == "__main__":
+    print("Starting Job worker...")
+
+    queue = JobQueue()
+
+    worker = Worker(
+        queue=queue,
+        max_workers=3,
+        mode="process"
+    )
+
+    worker.start()
+
+    # Keep worker alive
+    try:
+        while True:
+            time.sleep(5)
+    except KeyboardInterrupt:
+        worker.stop()

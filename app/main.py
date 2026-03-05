@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from app.workers.queue import JobQueue
+from app.workers.redis_queue import RedisJobQueue
 from app.workers.worker import Worker
 from app.services.job_registry import JobRegistry
 from app.api.routes import router
 
 # Global shared components
-queue = JobQueue()
+queue = RedisJobQueue()
 registry = JobRegistry()
 worker = Worker(queue, max_workers=3, mode="process")
 

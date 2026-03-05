@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    container_name: job-redis
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:15
+    container_name: job-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jobs_db
+    ports:
+      - "5432:5432"
+
+  api:
+    build: .
+    container_name: job-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - postgres
+
+  worker:
+    build: .
+    container_name: job-worker
+    command: python -m app.workers.worker
+    depends_on:
+      - redis
+      - postgres
